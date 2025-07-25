@@ -1,54 +1,25 @@
-const express = require('express');
+const express = require("express");
+const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
+
 const app = express();
-const http = require('http').createServer(app);
-const { Server } = require('socket.io');
-const io = new Server(http);
+const server = http.createServer(app);
 
-const PORT = process.env.PORT || 3000;
+app.use(cors()); // <<-- Thêm dòng này
 
-let currentGameState = {
-    round: 1,
-    countdown: 10,
-    result: null,
-};
-
-let bets = [];
-
-setInterval(() => {
-    if (currentGameState.countdown > 0) {
-        currentGameState.countdown--;
-        io.emit('countdown', currentGameState.countdown);
-    } else {
-        currentGameState.result = Math.random() < 0.5 ? 'TÀI' : 'XỈU';
-        io.emit('round-result', {
-            result: currentGameState.result,
-            bets,
-        });
-
-        currentGameState.round++;
-        currentGameState.countdown = 10;
-        bets = [];
+const io = new Server(server, {
+    cors: {
+        origin: "*", // hoặc chỉ Netlify domain nếu muốn giới hạn
+        methods: ["GET", "POST"]
     }
-}, 1000);
-
-io.on('connection', (socket) => {
-    console.log('🔗 Người chơi đã kết nối:', socket.id);
-
-    socket.emit('init', currentGameState);
-
-    socket.on('dat-cuoc', (data) => {
-        console.log('💰 Cược từ', socket.id, data);
-        bets.push({ socketId: socket.id, ...data });
-    });
-
-    socket.on('chat-message', (msg) => {
-        io.emit('chat-message', {
-            from: socket.id,
-            message: msg,
-        });
-    });
 });
 
-http.listen(PORT, () => {
+io.on("connection", (socket) => {
+    console.log("🟢 Người chơi đã kết nối:", socket.id);
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
     console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
 });
